@@ -1,8 +1,8 @@
 from __future__ import absolute_import
 
+import six
 from jinja2 import Template
 from jira.client import JIRA
-import six
 
 from bugwarrior.config import asbool, die
 from bugwarrior.services import IssueService, Issue
@@ -14,6 +14,7 @@ class JiraIssue(Issue):
     FOREIGN_ID = 'jiraid'
     DESCRIPTION = 'jiradescription'
     ESTIMATE = 'jiraestimate'
+    FIX_VERSION = 'jirafixversion'
 
     UDAS = {
         SUMMARY: {
@@ -35,6 +36,10 @@ class JiraIssue(Issue):
         ESTIMATE: {
             'type': 'numeric',
             'label': 'Estimate'
+        },
+        FIX_VERSION: {
+            'type': 'string',
+            'label': 'Fix Version'
         }
     }
     UNIQUE_KEY = (URL, )
@@ -59,6 +64,7 @@ class JiraIssue(Issue):
             self.DESCRIPTION: self.record.get('fields', {}).get('description'),
             self.SUMMARY: self.get_summary(),
             self.ESTIMATE: self.get_estimate(),
+            self.FIX_VERSION: self.get_fix_version()
         }
 
     def get_tags(self):
@@ -121,6 +127,12 @@ class JiraIssue(Issue):
             number=self.get_number(),
             cls='issue',
         )
+
+    def get_fix_version(self):
+        try:
+            return self.record['fields'].get('fixVersions', [{}])[0].get('name')
+        except (IndexError, KeyError, AttributeError, TypeError):
+            return None
 
 
 class JiraService(IssueService):
