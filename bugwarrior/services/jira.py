@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from datetime import datetime
+
 import six
 from jinja2 import Template
 from jira.client import JIRA as BaseJIRA
@@ -38,6 +40,7 @@ class JiraIssue(Issue):
     DESCRIPTION = 'jiradescription'
     ESTIMATE = 'jiraestimate'
     FIX_VERSION = 'jirafixversion'
+    CREATED_AT = 'jiracreatedts'
 
     UDAS = {
         SUMMARY: {
@@ -63,11 +66,20 @@ class JiraIssue(Issue):
         FIX_VERSION: {
             'type': 'string',
             'label': 'Fix Version'
-        }
+        },
+        CREATED_AT: {
+            'type': 'date',
+            'label': 'Created At'
+        },
     }
     UNIQUE_KEY = (URL, )
 
     PRIORITY_MAP = {
+        'Highest': 'H',
+        'High': 'H',
+        'Medium': 'M',
+        'Low': 'L',
+        'Lowest': 'L',
         'Trivial': 'L',
         'Minor': 'L',
         'Major': 'M',
@@ -81,6 +93,7 @@ class JiraIssue(Issue):
             'priority': self.get_priority(),
             'annotations': self.get_annotations(),
             'tags': self.get_tags(),
+            'entry': self.get_entry(),
 
             self.URL: self.get_url(),
             self.FOREIGN_ID: self.record['key'],
@@ -89,6 +102,14 @@ class JiraIssue(Issue):
             self.ESTIMATE: self.get_estimate(),
             self.FIX_VERSION: self.get_fix_version()
         }
+
+    def get_entry(self):
+        q = self.record['fields']['created']
+
+        t, tz = q[:-5], q[-5:]
+        x = datetime.strptime(t, '%Y-%m-%dT%H:%M:%S.%f')
+        y = x.strftime('%Y%m%dT%H%M%S') + tz
+        return y
 
     def get_tags(self):
         tags = []
@@ -136,11 +157,10 @@ class JiraIssue(Issue):
 
     def get_priority(self):
         value = self.record['fields'].get('priority')
-        if isinstance(value, dict):
-            value = value.get('name')
-        elif value:
+        try:
+            value = value['name']
+        except (TypeError, ):
             value = str(value)
-
         return self.PRIORITY_MAP.get(value, self.origin['default_priority'])
 
     def get_default_description(self):
