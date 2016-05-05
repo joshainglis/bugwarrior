@@ -20,6 +20,9 @@ class ObliviousCookieJar(RequestsCookieJar):
         return ObliviousCookieJar()
 
 
+# 'Borrowed' from this wonderful commit by @GaretJax
+# https://github.com/GaretJax/lancet/commit/f175cb2ec9a2135fb78188cf0b9f621b51d88977
+# Prevents Jira web client being logged out when API call is made.
 class JIRA(BaseJIRA):
     def _create_http_basic_session(self, username, password):
         super(JIRA, self)._create_http_basic_session(username, password)
@@ -104,12 +107,12 @@ class JiraIssue(Issue):
         }
 
     def get_entry(self):
-        q = self.record['fields']['created']
+        created_at = self.record['fields']['created']
 
-        t, tz = q[:-5], q[-5:]
-        x = datetime.strptime(t, '%Y-%m-%dT%H:%M:%S.%f')
-        y = x.strftime('%Y%m%dT%H%M%S') + tz
-        return y
+        # strip off the timezone offset
+        timestamp, timezone = created_at[:-5], created_at[-5:]
+        timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f')
+        return timestamp.strftime('%Y%m%dT%H%M%S') + timezone
 
     def get_tags(self):
         tags = []
